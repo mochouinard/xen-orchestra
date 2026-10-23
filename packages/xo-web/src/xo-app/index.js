@@ -379,9 +379,6 @@ export default class XoApp extends Component {
 
   componentDidMount() {
     this.refs.bodyWrapper.style.minHeight = this.refs.menu.getWrappedInstance().height + 'px'
-    if (+process.env.XOA_PLAN === 5) {
-      this.displayOpenSourceDisclaimer()
-    }
   }
 
   componentDidUpdate(prev) {
@@ -471,27 +468,6 @@ export default class XoApp extends Component {
                     {_('notRegisteredDisclaimerCreateAccount')}
                   </a>{' '}
                   <Link to='/xoa/update'>{_('notRegisteredDisclaimerRegister')}</Link>
-                </div>
-              )}
-              {plan === 'Community' && !this.state.dismissedSourceBanner && (
-                <div className='alert alert-danger mb-0'>
-                  <a
-                    href='https://vates.tech/deploy/?pk_campaign=xo_source_banner'
-                    rel='noopener noreferrer'
-                    target='_blank'
-                  >
-                    {_('disclaimerText3')}
-                  </a>{' '}
-                  <a
-                    href='https://docs.xen-orchestra.com/getting-started/install-from-sources#about-the-banner'
-                    rel='noopener noreferrer'
-                    target='_blank'
-                  >
-                    {_('disclaimerText4')}
-                  </a>
-                  <button className='close' onClick={this.dismissSourceBanner}>
-                    &times;
-                  </button>
                 </div>
               )}
               {isTrialRunning(trialState.trial) && !this.state.dismissedTrialBanner && (
