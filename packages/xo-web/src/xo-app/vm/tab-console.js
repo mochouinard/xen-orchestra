@@ -9,7 +9,7 @@ import getEventValue from 'get-event-value'
 import Icon from 'icon'
 import invoke from 'invoke'
 import IsoDevice from 'iso-device'
-import NoVnc from 'react-novnc'
+import NoVnc, { getUntypableChars } from 'react-novnc'
 import React from 'react'
 import Tooltip from 'tooltip'
 import { isVmRunning, resolveUrl } from 'xo'
@@ -49,7 +49,7 @@ class SendToClipboard extends Component {
 }
 
 export default class TabConsole extends Component {
-  state = { clipboard: '', scale: 1 }
+  state = { clipboard: '', scale: 1, textToType: '' }
 
   componentWillReceiveProps(props) {
     if (isVmRunning(this.props.vm) && !isVmRunning(props.vm) && props.collapsedHeader) {
@@ -70,6 +70,15 @@ export default class TabConsole extends Component {
       body: _('ctrlAltDelConfirmation'),
     })
     this.refs.noVnc.sendCtrlAltDel()
+  }
+
+  _typeText = async pressEnter => {
+    const { textToType } = this.state
+    if (textToType === '') {
+      return
+    }
+    this.setState({ textToType: '' })
+    await this.refs.noVnc.typeText(pressEnter ? textToType + '\n' : textToType)
   }
 
   _getRemoteClipboard = clipboard => {
@@ -259,6 +268,45 @@ export default class TabConsole extends Component {
                 <Icon icon={collapsedHeader ? 'caret' : 'caret-up'} />
               </Button>
             </Tooltip>
+          </Col>
+        </Row>
+        <Row>
+          <Col mediumSize={6}>
+            <div className='input-group'>
+              <input
+                autoComplete='off'
+                className='form-control'
+                onChange={this.linkState('textToType')}
+                placeholder='Paste text to type on the console keyboard (US layout)'
+                type='password'
+                value={this.state.textToType}
+              />
+              <span className='input-group-btn'>
+                <ActionButton
+                  disabled={this.state.textToType === '' || getUntypableChars(this.state.textToType).length !== 0}
+                  handler={this._typeText}
+                  handlerParam={false}
+                  icon='vm-keyboard'
+                  tooltip='Type the text on the console keyboard'
+                >
+                  Type
+                </ActionButton>
+                <ActionButton
+                  disabled={this.state.textToType === '' || getUntypableChars(this.state.textToType).length !== 0}
+                  handler={this._typeText}
+                  handlerParam
+                  icon='vm-keyboard'
+                  tooltip='Type the text then press Enter'
+                >
+                  Type + Enter
+                </ActionButton>
+              </span>
+            </div>
+            {getUntypableChars(this.state.textToType).length !== 0 && (
+              <span className='text-danger'>
+                Cannot type: {getUntypableChars(this.state.textToType).join(' ')}
+              </span>
+            )}
           </Col>
         </Row>
         <Row className='console'>
