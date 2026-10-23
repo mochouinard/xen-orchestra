@@ -18,6 +18,8 @@ with `xo-install.cfg`:
 - `feat(xo-web/console)`: text box on the VM console tab that types the pasted
   text on the VM keyboard (US layout). See `packages/xo-web/src/common/react-novnc.js`
   (`typeText`) and `packages/xo-web/src/xo-app/vm/tab-console.js`.
+- `feat(xo-web)`: no "not bundled with any support" source banner nor weekly
+  disclaimer popup (`packages/xo-web/src/xo-app/index.js`).
 
 ## Updating XO
 
