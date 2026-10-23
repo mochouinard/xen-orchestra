@@ -25,7 +25,7 @@ echo "== sync fork master with upstream"
 gh repo sync "$FORK" -b master
 
 echo "== rebase $BRANCH on master"
-gitgh fetch -q origin master "$BRANCH"
+gitgh fetch -q origin "+refs/heads/master:refs/remotes/origin/master" "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 git checkout -q "$BRANCH"
 git reset -q --hard "origin/$BRANCH"
 if ! git rebase -q origin/master; then
