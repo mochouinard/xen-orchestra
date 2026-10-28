@@ -58,7 +58,7 @@ class ScreenText extends Component {
   }
 
   render() {
-    const { confidence } = this.props
+    const { confidence, font, method, unknown } = this.props
     const { value } = this.state
     return (
       <div>
@@ -76,9 +76,16 @@ class ScreenText extends Component {
               <Icon icon='clipboard' /> {_('copyToClipboardLabel')}
             </Button>
           </CopyToClipboard>{' '}
-          <span className={confidence < 80 ? 'text-warning' : 'text-muted'}>
-            OCR confidence {confidence}%. Check look-alike characters (l 1 I, 0 O) in passwords and keys.
-          </span>
+          {method === 'font' ? (
+            <span className={unknown === 0 ? 'text-success' : 'text-warning'}>
+              Exact reading (console font {font})
+              {unknown !== 0 && `, ${unknown} unrecognized character(s) shown as \ufffd`}.
+            </span>
+          ) : (
+            <span className={confidence < 80 ? 'text-warning' : 'text-muted'}>
+              OCR, confidence {confidence}%. Check look-alike characters (l 1 I, 0 O) in passwords and keys.
+            </span>
+          )}
         </div>
       </div>
     )
@@ -130,12 +137,13 @@ export default class TabConsole extends Component {
     if (area === null) {
       return
     }
-    const { confidence, text } = await noVnc.readText(area)
+    const result = await noVnc.readText(area)
+    const { text } = result
     await alert(
       <span>
         <Icon icon='search' /> Screen text
       </span>,
-      text === '' ? <p>No text found.</p> : <ScreenText confidence={confidence} text={text} />
+      text === '' ? <p>No text found.</p> : <ScreenText {...result} />
     )
   }
 
