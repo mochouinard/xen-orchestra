@@ -14,7 +14,7 @@ import React from 'react'
 import Tooltip from 'tooltip'
 import { isVmRunning, resolveUrl } from 'xo'
 import { Col, Container, Row } from 'grid'
-import { confirm, form } from 'modal'
+import { alert, confirm, form } from 'modal'
 import { CpuSparkLines, MemorySparkLines, NetworkSparkLines, XvdSparkLines } from 'xo-sparklines'
 
 // add `[]` around the hostname if it's an IPv6 address
@@ -48,8 +48,45 @@ class SendToClipboard extends Component {
   }
 }
 
+class ScreenText extends Component {
+  state = { value: this.props.text }
+
+  _selectContent = ref => {
+    if (ref !== null) {
+      ref.select()
+    }
+  }
+
+  render() {
+    const { confidence } = this.props
+    const { value } = this.state
+    return (
+      <div>
+        <textarea
+          className='form-control text-monospace'
+          onChange={this.linkState('value')}
+          ref={this._selectContent}
+          rows={Math.min(Math.max(value.split('\n').length, 3), 25)}
+          value={value}
+          wrap='off'
+        />
+        <div className='mt-1'>
+          <CopyToClipboard text={value}>
+            <Button>
+              <Icon icon='clipboard' /> {_('copyToClipboardLabel')}
+            </Button>
+          </CopyToClipboard>{' '}
+          <span className={confidence < 80 ? 'text-warning' : 'text-muted'}>
+            OCR confidence {confidence}%. Check look-alike characters (l 1 I, 0 O) in passwords and keys.
+          </span>
+        </div>
+      </div>
+    )
+  }
+}
+
 export default class TabConsole extends Component {
-  state = { clipboard: '', scale: 1, textToType: '' }
+  state = { clipboard: '', scale: 1, selectingScreenText: false, textToType: '' }
 
   componentWillReceiveProps(props) {
     if (isVmRunning(this.props.vm) && !isVmRunning(props.vm) && props.collapsedHeader) {
@@ -79,6 +116,31 @@ export default class TabConsole extends Component {
     }
     this.setState({ textToType: '' })
     await this.refs.noVnc.typeText(pressEnter ? textToType + '\n' : textToType)
+  }
+
+  _readScreenText = async () => {
+    const { noVnc } = this.refs
+    this.setState({ selectingScreenText: true })
+    let area
+    try {
+      area = await noVnc.selectArea()
+    } finally {
+      this.setState({ selectingScreenText: false })
+    }
+    if (area === null) {
+      return
+    }
+    const { confidence, text } = await noVnc.readText(area)
+    await alert(
+      <span>
+        <Icon icon='search' /> Screen text
+      </span>,
+      text === '' ? <p>No text found.</p> : <ScreenText confidence={confidence} text={text} />
+    )
+  }
+
+  _cancelReadScreenText = () => {
+    this.refs.noVnc.cancelSelectArea()
   }
 
   _getRemoteClipboard = clipboard => {
@@ -303,8 +365,26 @@ export default class TabConsole extends Component {
               </span>
             </div>
             {getUntypableChars(this.state.textToType).length !== 0 && (
-              <span className='text-danger'>
-                Cannot type: {getUntypableChars(this.state.textToType).join(' ')}
+              <span className='text-danger'>Cannot type: {getUntypableChars(this.state.textToType).join(' ')}</span>
+            )}
+          </Col>
+          <Col mediumSize={6}>
+            <ActionButton
+              handler={this._readScreenText}
+              icon='search'
+              tooltip='Read the text on the console screen (OCR) to copy it'
+            >
+              Read screen text
+            </ActionButton>
+            {this.state.selectingScreenText && (
+              <span>
+                {' '}
+                <Button onClick={this._cancelReadScreenText}>
+                  <Icon icon='cancel' /> Cancel
+                </Button>{' '}
+                <span className='text-info'>
+                  Drag on the console to select an area, or click it for the whole screen.
+                </span>
               </span>
             )}
           </Col>

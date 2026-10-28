@@ -20,6 +20,11 @@ with `xo-install.cfg`:
   (`typeText`) and `packages/xo-web/src/xo-app/vm/tab-console.js`.
 - `feat(xo-web)`: no "not bundled with any support" source banner nor weekly
   disclaimer popup (`packages/xo-web/src/xo-app/index.js`).
+- `feat(xo-web/console)`: "Read screen text" button on the VM console tab: OCR
+  (Tesseract.js) of the whole screen or a dragged area, result in a dialog to
+  copy. Self-hosted: `tesseract.js`, `tesseract.js-core` and
+  `@tesseract.js-data/eng` are copied to `dist/` by `copyAssets` (gulpfile.js),
+  nothing is loaded from a CDN. See `packages/xo-web/src/common/console-ocr.js`.
 
 ## Updating XO
 

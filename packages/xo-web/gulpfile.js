@@ -287,6 +287,18 @@ gulp.task(function copyAssets() {
       base: __dirname + '/../../node_modules/font-mfizz/dist', // eslint-disable-line no-path-concat
       passthrough: true,
     }),
+    // self-hosted OCR engine for the VM console, see src/common/console-ocr.js
+    src(
+      [
+        'tesseract.js/dist/{tesseract,worker}.min.js',
+        'tesseract.js-core/tesseract-core{,-simd,-relaxedsimd}-lstm.wasm.js',
+        '@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+      ],
+      {
+        base: __dirname + '/../../node_modules', // eslint-disable-line no-path-concat
+        passthrough: true,
+      }
+    ),
     dest()
   )
 })

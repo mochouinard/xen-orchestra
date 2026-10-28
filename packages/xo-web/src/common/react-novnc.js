@@ -6,6 +6,8 @@ import URL from 'url-parse'
 import { createBackoff } from 'jsonrpc-websocket-client'
 import { enable as enableShortcuts, disable as disableShortcuts } from 'shortcuts'
 
+import { readCanvasText } from './console-ocr'
+
 const PROTOCOL_ALIASES = {
   'http:': 'ws:',
   'https:': 'wss:',
@@ -27,7 +29,7 @@ const US_KEYS = { ' ': ['Space', false], '\n': ['Enter', false], '\t': ['Tab', f
   [']}', 'BracketRight'],
   ['\\|', 'Backslash'],
   [';:', 'Semicolon'],
-  ["'\"", 'Quote'],
+  ['\'"', 'Quote'],
   [',<', 'Comma'],
   ['.>', 'Period'],
   ['/?', 'Slash'],
@@ -44,6 +46,8 @@ const KEY_DELAY = 15 // ms between key events
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 
+const MIN_SELECTION = 5 // px, smaller drags are clicks
+
 export const getUntypableChars = text =>
   [...new Set(text.replace(/\r\n?/g, '\n'))].filter(c => US_KEYS[c] === undefined)
 
@@ -56,6 +60,7 @@ export default class NoVnc extends Component {
   constructor(props) {
     super(props)
     this._rfb = null
+    this.state = { selecting: false, selection: undefined }
     this._retryGen = createBackoff(Infinity)
 
     this._onUpdateState = (rfb, state) => {
@@ -129,6 +134,88 @@ export default class NoVnc extends Component {
     }
   }
 
+  // Let the user drag a rectangle on the console.
+  //
+  // Resolves with the area in canvas pixels, `undefined` for a simple click
+  // (whole screen) or `null` if cancelled.
+  selectArea() {
+    this.cancelSelectArea()
+    this._unfocus()
+    return new Promise(resolve => {
+      this._resolveSelection = resolve
+      this.setState({ selecting: true, selection: undefined })
+    })
+  }
+
+  cancelSelectArea = () => {
+    this._endSelection(null)
+  }
+
+  // OCR of the console, `area` as returned by `selectArea()`
+  readText(area) {
+    return readCanvasText(this.refs.canvas, area)
+  }
+
+  _endSelection(area) {
+    window.removeEventListener('mousemove', this._onSelectionMove)
+    window.removeEventListener('mouseup', this._onSelectionEnd)
+    const resolve = this._resolveSelection
+    if (resolve !== undefined) {
+      this._resolveSelection = undefined
+      this.setState({ selecting: false, selection: undefined })
+      resolve(area)
+    }
+  }
+
+  _getOverlayPoint(event) {
+    const { canvas } = this.refs
+    const rect = canvas.getBoundingClientRect()
+    return {
+      x: Math.min(Math.max(event.clientX - rect.left, 0), rect.width),
+      y: Math.min(Math.max(event.clientY - rect.top, 0), rect.height),
+    }
+  }
+
+  _onSelectionStart = event => {
+    event.preventDefault()
+    const start = this._getOverlayPoint(event)
+    this.setState({ selection: { start, end: start } })
+    window.addEventListener('mousemove', this._onSelectionMove)
+    window.addEventListener('mouseup', this._onSelectionEnd)
+  }
+
+  _onSelectionMove = event => {
+    const { selection } = this.state
+    if (selection !== undefined) {
+      this.setState({ selection: { ...selection, end: this._getOverlayPoint(event) } })
+    }
+  }
+
+  _onSelectionEnd = event => {
+    const { selection } = this.state
+    if (selection === undefined) {
+      return
+    }
+    const { start } = selection
+    const end = this._getOverlayPoint(event)
+    if (Math.abs(end.x - start.x) < MIN_SELECTION || Math.abs(end.y - start.y) < MIN_SELECTION) {
+      this._endSelection(undefined)
+      return
+    }
+
+    // the canvas may be displayed scaled
+    const { canvas } = this.refs
+    const ratio = canvas.width / canvas.getBoundingClientRect().width
+    const x = Math.floor(Math.min(start.x, end.x) * ratio)
+    const y = Math.floor(Math.min(start.y, end.y) * ratio)
+    this._endSelection({
+      x,
+      y,
+      width: Math.min(Math.ceil(Math.abs(end.x - start.x) * ratio), canvas.width - x),
+      height: Math.min(Math.ceil(Math.abs(end.y - start.y) * ratio), canvas.height - y),
+    })
+  }
+
   _clean() {
     const rfb = this._rfb
     if (rfb) {
@@ -182,6 +269,7 @@ export default class NoVnc extends Component {
   }
 
   componentWillUnmount() {
+    this.cancelSelectArea()
     this._clean()
   }
 
@@ -218,16 +306,51 @@ export default class NoVnc extends Component {
     }
   }
 
+  _renderSelectionOverlay() {
+    const { canvas } = this.refs
+    const { selection } = this.state
+    return (
+      <div
+        onMouseDown={this._onSelectionStart}
+        style={{
+          cursor: 'crosshair',
+          height: canvas.offsetHeight,
+          left: canvas.offsetLeft,
+          position: 'absolute',
+          top: canvas.offsetTop,
+          width: canvas.offsetWidth,
+        }}
+      >
+        {selection !== undefined && (
+          <div
+            style={{
+              background: 'rgba(51, 122, 183, 0.25)',
+              border: '1px solid #337ab7',
+              height: Math.abs(selection.end.y - selection.start.y),
+              left: Math.min(selection.start.x, selection.end.x),
+              position: 'absolute',
+              top: Math.min(selection.start.y, selection.end.y),
+              width: Math.abs(selection.end.x - selection.start.x),
+            }}
+          />
+        )}
+      </div>
+    )
+  }
+
   render() {
     return (
-      <canvas
-        className='center-block'
-        height='480'
-        onMouseEnter={this._focus}
-        onMouseLeave={this._unfocus}
-        ref='canvas'
-        width='640'
-      />
+      <div style={{ position: 'relative' }}>
+        <canvas
+          className='center-block'
+          height='480'
+          onMouseEnter={this._focus}
+          onMouseLeave={this._unfocus}
+          ref='canvas'
+          width='640'
+        />
+        {this.state.selecting && this._renderSelectionOverlay()}
+      </div>
     )
   }
 }
