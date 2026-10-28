@@ -28,12 +28,13 @@ echo "== rebase $BRANCH on master"
 gitgh fetch -q origin "+refs/heads/master:refs/remotes/origin/master" "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 git checkout -q "$BRANCH"
 git reset -q --hard "origin/$BRANCH"
+remote_head=$(git rev-parse "origin/$BRANCH")
 if ! git rebase -q origin/master; then
     git rebase --abort
     echo "rebase conflict: fix $BRANCH by hand (git rebase origin/master), nothing was pushed" >&2
     exit 1
 fi
-gitgh push -q --force-with-lease origin "$BRANCH"
+gitgh push -q --force-with-lease="$BRANCH:$remote_head" origin "$BRANCH"
 git log --oneline -1 origin/master
 git log --oneline origin/master.."$BRANCH"
 
