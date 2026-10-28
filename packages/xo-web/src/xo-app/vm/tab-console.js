@@ -125,17 +125,19 @@ export default class TabConsole extends Component {
     await this.refs.noVnc.typeText(pressEnter ? textToType + '\n' : textToType)
   }
 
-  _readScreenText = async () => {
+  _readScreenText = async selectArea => {
     const { noVnc } = this.refs
-    this.setState({ selectingScreenText: true })
     let area
-    try {
-      area = await noVnc.selectArea()
-    } finally {
-      this.setState({ selectingScreenText: false })
-    }
-    if (area === null) {
-      return
+    if (selectArea) {
+      this.setState({ selectingScreenText: true })
+      try {
+        area = await noVnc.selectArea()
+      } finally {
+        this.setState({ selectingScreenText: false })
+      }
+      if (area === null) {
+        return
+      }
     }
     const result = await noVnc.readText(area)
     const { text } = result
@@ -377,13 +379,24 @@ export default class TabConsole extends Component {
             )}
           </Col>
           <Col mediumSize={6}>
-            <ActionButton
-              handler={this._readScreenText}
-              icon='search'
-              tooltip='Read the text on the console screen (OCR) to copy it'
-            >
-              Read screen text
-            </ActionButton>
+            <div className='btn-group'>
+              <ActionButton
+                handler={this._readScreenText}
+                handlerParam={false}
+                icon='search'
+                tooltip='Read all the text on the console screen to copy it'
+              >
+                Read whole screen
+              </ActionButton>
+              <ActionButton
+                handler={this._readScreenText}
+                handlerParam
+                icon='search'
+                tooltip='Drag an area on the console and read its text to copy it'
+              >
+                Read area
+              </ActionButton>
+            </div>
             {this.state.selectingScreenText && (
               <span>
                 {' '}

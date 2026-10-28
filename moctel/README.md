@@ -20,7 +20,7 @@ with `xo-install.cfg`:
   (`typeText`) and `packages/xo-web/src/xo-app/vm/tab-console.js`.
 - `feat(xo-web)`: no "not bundled with any support" source banner nor weekly
   disclaimer popup (`packages/xo-web/src/xo-app/index.js`).
-- `feat(xo-web/console)`: "Read screen text" button on the VM console tab, for
+- `feat(xo-web/console)`: "Read whole screen" / "Read area" buttons on the VM console tab, for
   the whole screen or a dragged area, result in a dialog to copy
   (`packages/xo-web/src/common/console-ocr.js`):
   - Linux text consoles are read **exactly**: each 8x16 / 9x16 cell is compared
